@@ -25,4 +25,3 @@ pytest_plugins = [
 os.environ['PRACTICUM_TOKEN'] = 'sometoken'
 os.environ['TELEGRAM_TOKEN'] = '1234:abcdefg'
 os.environ['TELEGRAM_CHAT_ID'] = '12345'
-

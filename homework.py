@@ -1,16 +1,18 @@
 import logging
 import os
 import time
+import sys
 from http import HTTPStatus
-
+import json
 import requests
 import telegram
 from dotenv import load_dotenv
 
-import exceptions
 
-load_dotenv()
+if __name__ == '__main__':
+    load_dotenv()
 
+logger = logging.getLogger(__name__)
 logging.basicConfig(
     format='%(asctime)s, %(levelname)s, %(message)s',
     level=logging.DEBUG
@@ -35,18 +37,16 @@ HOMEWORK_VERDICTS = {
 
 def check_tokens():
     """Проверяет доступность переменных окружения."""
-    return (PRACTICUM_TOKEN is not None) \
-        and (TELEGRAM_TOKEN is not None) \
-        and (TELEGRAM_CHAT_ID is not None)
+    return all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])
 
 
 def send_message(bot, message):
     """Отправляет сообщение в Telegram чат."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
-        logging.debug('Отправка сообщения')
+        logger.debug('Отправка сообщения')
     except Exception as error:
-        logging.error(f'Ошибка отправки сообщения. {error}')
+        logger.error(f'Ошибка отправки сообщения. {error}')
 
 
 def get_api_answer(timestamp):
@@ -59,17 +59,19 @@ def get_api_answer(timestamp):
         )
         if homework_statuses.status_code != HTTPStatus.OK:
             raise Exception(
-                logging.error(f'Ошибка {homework_statuses.status_code}')
+                logger.error(f'Ошибка {homework_statuses.status_code}')
             )
         return homework_statuses.json()
-    except requests.RequestException as error:
-        logging.error(f'Ошибка {error}')
+    except requests.RequestException:
+        pass
+    except json.decoder.JSONDecodeError:
+        logger.error('Ошибка при декодировании')
 
 
 def check_response(response: dict) -> bool:
     """Проверяет ответ API."""
     if 'current_date' not in response or 'homeworks' not in response:
-        logging.error('Отсутствуют ожидаемые ключи')
+        logger.error('Отсутствуют ожидаемые ключи')
         raise TypeError(
             'API возвращает некоректную информацию'
         )
@@ -84,14 +86,14 @@ def check_response(response: dict) -> bool:
         raise TypeError('Список домашних работ не list')
 
     if response['homeworks'][0]['status'] not in HOMEWORK_VERDICTS:
-        logging.error('Неожиданный статус домашней работы')
+        logger.error('Неожиданный статус домашней работы')
 
     if (response == {
         "error": {"error": "Wrong from_date format"},
         "code": "UnknownError"
     }
     ):
-        logging.error('Недоступность эндпоинта')
+        logger.error('Недоступность эндпоинта')
     return True
 
 
@@ -122,7 +124,7 @@ def main():
         logging.critical(
             'Отсутствие обязательных переменных окружения'
         )
-        raise exceptions.TokenProblem('Проблема с токеном.')
+        sys.exit()
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     actual_result = None
     prev_result = None
