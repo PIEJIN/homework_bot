@@ -63,15 +63,14 @@ def get_api_answer(timestamp):
             )
         return homework_statuses.json()
     except requests.RequestException:
-        pass
+        raise Exception('Ошибка запроса')
     except json.decoder.JSONDecodeError:
-        logger.error('Ошибка при декодировании')
+        raise Exception('Ошибка декодирования')
 
 
 def check_response(response: dict) -> bool:
     """Проверяет ответ API."""
     if 'current_date' not in response or 'homeworks' not in response:
-        logger.error('Отсутствуют ожидаемые ключи')
         raise TypeError(
             'API возвращает некоректную информацию'
         )
@@ -86,14 +85,14 @@ def check_response(response: dict) -> bool:
         raise TypeError('Список домашних работ не list')
 
     if response['homeworks'][0]['status'] not in HOMEWORK_VERDICTS:
-        logger.error('Неожиданный статус домашней работы')
+        raise Exception('Неожиданный статус домашней работы')
 
     if (response == {
         "error": {"error": "Wrong from_date format"},
         "code": "UnknownError"
     }
     ):
-        logger.error('Недоступность эндпоинта')
+        raise Exception('Недоступность эндпоинта')
     return True
 
 
